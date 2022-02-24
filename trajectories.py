@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-points = np.loadtxt("out.dat", delimiter=';').swapaxes(0,1)
+points = np.loadtxt("trajectories.dat", delimiter=';').swapaxes(0,1)
 
 fig = plt.figure()
 ax = fig.add_subplot()

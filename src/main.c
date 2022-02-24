@@ -1,4 +1,4 @@
-#include <stdlib.h>
+﻿#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdbool.h>
@@ -7,7 +7,6 @@
 #include "vec.h"
 
 #define ATOM_RADIUS   0.25 // As a proportion of lattice's size
-#define GRID_INTERVAL (1.0 / GRID_SIZE)
 #define GRID_SIZE 200
 
 /* STRUCTS */
@@ -17,7 +16,10 @@ struct data_t {
 	vec_t* points; // Initial point + iterations
 	vec_t* directions; // Initial direction + iterations
 
-	unsigned int* presence;// [GRID_SIZE^3] ;
+	unsigned int* presence; // [GRID_SIZE^3];
+	
+	double* thetas;
+	double* dots;
 };
 typedef struct data_t data_t;
 
@@ -30,14 +32,14 @@ typedef struct intersection_t intersection_t;
 /* FUNCTIONS DEF */
 
 size_t coords2idx(const vec_t* coords);
+int init_data(data_t* data, size_t ITER_COUNT);
 int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection_t* intersection);
-void iter(data_t* data);
+int iter(data_t* data);
 
 /* MAIN */
 
 int main(int argc, char* argv[]) {
 	size_t ITER_COUNT = 50;
-	bool out_presence = false;
 	double x_i = 0., y_i = 0., dx_i = 1., dy_i = 1.;
 
 	for (int i = 1; i < argc; ++i) {
@@ -50,9 +52,6 @@ int main(int argc, char* argv[]) {
 			ITER_COUNT = strtoul(argv[i + 1], NULL, 10);
 
 			++i;
-		}
-		else if (strcmp(argv[i], "-presence") == 0) {
-			out_presence = true;
 		}
 		else if (strcmp(argv[i], "-init") == 0) {
 			if (argc < i + 4) {
@@ -73,20 +72,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	printf("ITER_COUNT = %llu\n", ITER_COUNT);
-	printf("OUT_DATA = %d\n", (int)out_presence);
-
 
 	data_t data = { .iter_idx = 0 };
-	data.points = malloc((ITER_COUNT + 1) * sizeof(vec_t));
-	if (!data.points) {
-		printf("Failed to allocate %llu bytes\n", (ITER_COUNT + 1) * sizeof(vec_t));
-		return EXIT_FAILURE;
-	}
-
-	data.directions = malloc((ITER_COUNT + 1) * sizeof(vec_t));
-	if (!data.directions) {
-		printf("Failed to allocate %llu bytes\n", (ITER_COUNT + 1) * sizeof(vec_t));
-		free(data.points);
+	if (init_data(&data, ITER_COUNT) == -1) {
 		return EXIT_FAILURE;
 	}
 
@@ -97,46 +85,73 @@ int main(int argc, char* argv[]) {
 	data.directions[0].x = dx_i;
 	data.directions[0].y = dy_i;
 	vec_normalize(&data.directions[0]);
+	
 	printf("(x_i, y_i) = (%f, %f)\n(dx_i, dy_i) = (%f, %f)\n", x_i, y_i, data.directions[0].x, data.directions[0].y);
 
-	data.presence = malloc(GRID_SIZE * GRID_SIZE * sizeof(unsigned int));
-	if (!data.directions) {
-		printf("Failed to allocate %llu bytes\n", GRID_SIZE * GRID_SIZE * sizeof(unsigned int));
-		free(data.points);
-		free(data.directions);
-		return EXIT_FAILURE;
+	for (size_t i = 0; i < ITER_COUNT; ++i) {
+		if (iter(&data) == -1) {
+			free(data.points);
+			free(data.directions);
+			free(data.presence);
+			free(data.thetas);
+			free(data.dots);
+			return EXIT_FAILURE;
+		}
 	}
-	for (size_t i = 0; i < GRID_SIZE * GRID_SIZE; ++i)
-		data.presence[i] = 0;
 
-	for (size_t i = 0; i < ITER_COUNT; ++i)
-		iter(&data);
-
-	FILE* file = fopen("out.dat", "w");
+	FILE* file = fopen("presence.dat", "w");
 	if (!file) {
-		fprintf(stderr, "Failed to open 'out.dat'\n");
+		fprintf(stderr, "Failed to open 'presence.dat'\n");
 
 		free(data.points);
 		free(data.directions);
 		free(data.presence);
+		free(data.thetas);
+		free(data.dots);
 		return EXIT_FAILURE;
 	}
-
-	if (out_presence) {
-		for (size_t i = 0; i < GRID_SIZE * GRID_SIZE; ++i) {
-			fprintf(file, "%u\n", data.presence[i]);
-		}
+	for (size_t i = 0; i < GRID_SIZE * GRID_SIZE; ++i) {
+		fprintf(file, "%u\n", data.presence[i]);
 	}
-	else {
-		for (size_t i = 0; i < ITER_COUNT + 1; ++i) {
-			fprintf(file, "%f;%f\n", data.points[i].x, data.points[i].y);
-		}
+	fclose(file);
+
+	file = fopen("trajectories.dat", "w");
+	if (!file) {
+		fprintf(stderr, "Failed to open 'trajectories.dat'\n");
+
+		free(data.points);
+		free(data.directions);
+		free(data.presence);
+		free(data.thetas);
+		free(data.dots);
+		return EXIT_FAILURE;
+	}
+	for (size_t i = 0; i < ITER_COUNT + 1; ++i) {
+		fprintf(file, "%f;%f\n", data.points[i].x, data.points[i].y);
+	}
+	fclose(file);
+
+	file = fopen("phase.dat", "w");
+	if (!file) {
+		fprintf(stderr, "Failed to open 'trajectories.dat'\n");
+
+		free(data.points);
+		free(data.directions);
+		free(data.presence);
+		free(data.thetas);
+		free(data.dots);
+		return EXIT_FAILURE;
+	}
+	for (size_t i = 0; i < ITER_COUNT; ++i) {
+		fprintf(file, "%f;%f\n", data.thetas[i], data.dots[i]);
 	}
 	fclose(file);
 
 	free(data.points);
 	free(data.directions);
 	free(data.presence);
+	free(data.thetas);
+	free(data.dots);
 	return EXIT_SUCCESS;
 }
 
@@ -147,6 +162,54 @@ size_t coords2idx(const vec_t* coords) {
 	const size_t y_idx = (size_t)floor(fmax(0.0, fmin(1.0, coords->y + 0.5)) * (GRID_SIZE - 1.0));
 
 	return y_idx * GRID_SIZE + x_idx;
+}
+
+int init_data(data_t* data, size_t ITER_COUNT) {
+	data->points = malloc((ITER_COUNT + 1) * sizeof(vec_t));
+	if (!data->points) {
+		printf("Failed to allocate %llu bytes\n", (ITER_COUNT + 1) * sizeof(vec_t));
+		return -1;
+	}
+
+	data->directions = malloc((ITER_COUNT + 1) * sizeof(vec_t));
+	if (!data->directions) {
+		printf("Failed to allocate %llu bytes\n", (ITER_COUNT + 1) * sizeof(vec_t));
+		free(data->points);
+		return -1;
+	}
+
+	data->presence = malloc(GRID_SIZE * GRID_SIZE * sizeof(unsigned int));
+	if (!data->directions) {
+		printf("Failed to allocate %llu bytes\n", GRID_SIZE * GRID_SIZE * sizeof(unsigned int));
+		free(data->points);
+		free(data->directions);
+		return -1;
+	}
+	for (size_t i = 0; i < GRID_SIZE * GRID_SIZE; ++i)
+		data->presence[i] = 0;
+
+	data->thetas = malloc(ITER_COUNT * sizeof(double));
+	if (!data->thetas) {
+		printf("Failed to allocate %llu bytes\n", ITER_COUNT * sizeof(double));
+
+		free(data->points);
+		free(data->directions);
+		free(data->presence);
+		return -1;
+	}
+
+	data->dots = malloc(ITER_COUNT * sizeof(double));
+	if (!data->dots) {
+		printf("Failed to allocate %llu bytes\n", ITER_COUNT * sizeof(double));
+
+		free(data->points);
+		free(data->directions);
+		free(data->presence);
+		free(data->dots);
+		return -1;
+	}
+
+	return 0;
 }
 
 int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection_t* intersection) {
@@ -173,7 +236,7 @@ int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection
 	}
 }
 
-void iter(data_t* data) {
+int iter(data_t* data) {
 	const vec_t atoms[4] = { {.x = -0.5, .y = 0.5 },
 							 {.x = 0.5,  .y = 0.5 },
 							 {.x = -0.5, .y = -0.5  },
@@ -189,12 +252,10 @@ void iter(data_t* data) {
 			min_intersec = intersec;
 	}
 
-	vec_t tangent = { .x = min_intersec.normal.y, .y = -min_intersec.normal.x };
-	double dir_dot_tan = vec_dot(&data->directions[data->iter_idx], &tangent);
-	if (dir_dot_tan < 0) {
-		tangent.x *= -1.0;
-		tangent.y *= -1.0;
-		dir_dot_tan *= -1.0;
+	if (min_intersec.dist < 0) {
+		printf("[ERROR] Point (%f,%f) in direction (%f,%f) never intersected!\n", data->points[data->iter_idx].x, data->points[data->iter_idx].y,
+			                                                                      data->directions[data->iter_idx].x, data->directions[data->iter_idx].y);
+		return -1;
 	}
 
 	vec_t presence_point = data->points[data->iter_idx];
@@ -206,10 +267,34 @@ void iter(data_t* data) {
 		presence_point.y += data->directions[data->iter_idx].y / GRID_SIZE;
 	}
 
+	const vec_t tangent = { .x = min_intersec.normal.y, .y = -min_intersec.normal.x };
+	const double dir_dot_tan = vec_dot(&data->directions[data->iter_idx], &tangent);
+
 	++data->iter_idx;
 
 	data->points[data->iter_idx] = min_intersec.pos;
+
+	// Formula used for reflections: u' = -(u - 2(u . t)t)
 	data->directions[data->iter_idx].x = -(data->directions[data->iter_idx - 1].x - 2.0 * dir_dot_tan * tangent.x);
 	data->directions[data->iter_idx].y = -(data->directions[data->iter_idx - 1].y - 2.0 * dir_dot_tan * tangent.y);
 	vec_normalize(&data->directions[data->iter_idx]);
+
+	// θ = arccos(OP . (1,0))
+	const vec_t unitary_x = { .x = 0, .y = 1 };
+	const vec_t null_vec = VEC_ZERO;
+	vec_normalize(&min_intersec.pos);
+	const vec_t OP = vec_from_points(&null_vec, &min_intersec.pos);
+	double theta = acos(vec_dot(&OP, &unitary_x));
+
+	if (min_intersec.pos.x > 0) {
+		theta *= -1.;
+	}
+
+	data->thetas[data->iter_idx - 1] = theta;
+
+	// (u . t)
+	const double dot = vec_dot(&data->directions[data->iter_idx - 1], &tangent);
+	data->dots[data->iter_idx - 1] = dot;
+
+	return 0;
 }

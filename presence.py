@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-presence = np.loadtxt("out.dat")
+presence = np.loadtxt("presence.dat")
 WIDTH = int(np.sqrt(len(presence)))
 presence = presence.reshape((WIDTH,-1))
 
