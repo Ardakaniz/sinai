@@ -33,7 +33,7 @@ double vec_length(const vec_t* vec) {
 void vec_set_length(vec_t* vec, double length) {
 	const double actual_length = vec_length(vec);
 
-	if (fabs(length) > 1e-10) {
+	if (fabs(actual_length) > 1e-10) {
 		vec->x *= length / actual_length;
 		vec->y *= length / actual_length;
 	}
