@@ -111,7 +111,6 @@ int main(int argc, char* argv[]) {
 
 	for (size_t i = 0; i < ITER_COUNT; ++i) {
 		int iter = 0;
-		if (iter(&data) == -1) {
 		if (TRUE_POTENTIAL)
 			iter = iter_pot(&data);
 		else
