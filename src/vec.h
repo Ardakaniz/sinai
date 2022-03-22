@@ -3,13 +3,12 @@
 #ifndef VEC_H
 #define VEC_H
 
-#define VEC_ZERO (vec_t){ .x = 0, .y = 0 }
-
 struct vec_t {
 	double x, y;
 };
 typedef struct vec_t vec_t;
 
+static const vec_t VEC_ZERO;
 
 vec_t vec_from_points(const vec_t* from, const vec_t* to);
 double vec_dot(const vec_t* lhs, const vec_t* rhs);

@@ -2,6 +2,8 @@
 
 #include <math.h>
 
+static const vec_t VEC_ZERO = { .x = 0, .y = 0 };
+
 vec_t vec_from_points(const vec_t* from, const vec_t* to) {
 	const double dx = to->x - from->x;
 	const double dy = to->y - from->y;
