@@ -20,6 +20,7 @@ struct data_t {
 	
 	double* thetas;
 	double* dots;
+	const vec_t atoms[4];
 };
 typedef struct data_t data_t;
 
@@ -33,8 +34,9 @@ typedef struct intersection_t intersection_t;
 
 size_t coords2idx(const vec_t* coords);
 int init_data(data_t* data, size_t ITER_COUNT);
+
 int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection_t* intersection);
-int iter(data_t* data);
+int iter_wall(data_t* data);
 
 /* MAIN */
 
@@ -72,8 +74,14 @@ int main(int argc, char* argv[]) {
 	}
 
 	printf("ITER_COUNT = %llu\n", ITER_COUNT);
+	data_t data = {
+		.iter_idx = 0,
+		.atoms = { {.x = -0.5, .y = 0.5   },
+		           {.x = 0.5,  .y = 0.5   },
+		           {.x = -0.5, .y = -0.5  },
+		           {.x = 0.5,  .y = -0.5  } },
+	};
 
-	data_t data = { .iter_idx = 0 };
 	if (init_data(&data, ITER_COUNT) == -1) {
 		return EXIT_FAILURE;
 	}
@@ -89,7 +97,10 @@ int main(int argc, char* argv[]) {
 	printf("(x_i, y_i) = (%f, %f)\n(dx_i, dy_i) = (%f, %f)\n", x_i, y_i, data.directions[0].x, data.directions[0].y);
 
 	for (size_t i = 0; i < ITER_COUNT; ++i) {
+		int iter = 0;
 		if (iter(&data) == -1) {
+			iter = iter_wall(&data);
+		if (iter == -1) {
 			free(data.points);
 			free(data.directions);
 			free(data.presence);
@@ -236,17 +247,12 @@ int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection
 	}
 }
 
-int iter(data_t* data) {
-	const vec_t atoms[4] = { {.x = -0.5, .y = 0.5 },
-							 {.x = 0.5,  .y = 0.5 },
-							 {.x = -0.5, .y = -0.5  },
-							 {.x = 0.5,  .y = -0.5  } };
-
+int iter_wall(data_t* data) {
 	intersection_t min_intersec = { .dist = -1.0 };
 
 	for (size_t i = 0; i < 4; ++i) {
 		intersection_t intersec;
-		const int intersected = intersect_atom(&data->points[data->iter_idx], &data->directions[data->iter_idx], &atoms[i], &intersec);
+		const int intersected = intersect_atom(&data->points[data->iter_idx], &data->directions[data->iter_idx], &data->atoms[i], &intersec);
 
 		if (intersected && (min_intersec.dist < 0 || intersec.dist < min_intersec.dist))
 			min_intersec = intersec;
@@ -281,9 +287,8 @@ int iter(data_t* data) {
 
 	// θ = arccos(OP . (1,0))
 	const vec_t unitary_x = { .x = 0, .y = 1 };
-	const vec_t null_vec = VEC_ZERO;
 	vec_normalize(&min_intersec.pos);
-	const vec_t OP = vec_from_points(&null_vec, &min_intersec.pos);
+	const vec_t OP = vec_from_points(&VEC_ZERO, &min_intersec.pos);
 	double theta = acos(vec_dot(&OP, &unitary_x));
 
 	if (min_intersec.pos.x > 0) {
@@ -296,5 +301,7 @@ int iter(data_t* data) {
 	const double dot = vec_dot(&data->directions[data->iter_idx - 1], &tangent);
 	data->dots[data->iter_idx - 1] = dot;
 
+	return 0;
+}
 	return 0;
 }
