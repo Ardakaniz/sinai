@@ -77,7 +77,6 @@ int main(int argc, char* argv[]) {
 		}
 		else if (strcmp(argv[i], "-pot") == 0) {
 			TRUE_POTENTIAL = true;
-			++i;
 		}
 		else {
 			printf("Unrecognized option '%s'\n", argv[i]);
