@@ -321,9 +321,9 @@ int iter_wall(data_t* data) {
 }
 
 double potential(vec_t* pos, const vec_t* atoms_pos) {
-	const double D = 1;
+	const double D = 0.4;
 	const double a = 1.0 / (2.0 * ATOM_RADIUS);
-	const double ATOMS_DIST = 0.1;
+	const double ATOMS_DIST = 1;
 
 	double pot = 0.0;
 
@@ -361,6 +361,7 @@ int iter_pot(data_t* data) {
 	const size_t i = data->iter_idx;
 	const double dt = 0.05;
 
+	// Actually -strength
 	const double strength_x = dpot_dx(&data->points[i], data->atoms);
 	const double strength_y = dpot_dy(&data->points[i], data->atoms);
 
