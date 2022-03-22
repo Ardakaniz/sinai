@@ -6,7 +6,7 @@
 
 #include "vec.h"
 
-#define ATOM_RADIUS   0.25 // As a proportion of lattice's size
+#define ATOM_RADIUS 0.25 // As a proportion of lattice's size
 #define GRID_SIZE 200
 
 /* STRUCTS */
@@ -20,6 +20,7 @@ struct data_t {
 	
 	double* thetas;
 	double* dots;
+
 	const vec_t atoms[4];
 };
 typedef struct data_t data_t;
@@ -38,10 +39,16 @@ int init_data(data_t* data, size_t ITER_COUNT);
 int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection_t* intersection);
 int iter_wall(data_t* data);
 
+double potential(vec_t* pos, const vec_t* atoms_pos);
+double dpot_dx(vec_t* pos, const vec_t* atoms_pos);
+double dpot_dy(vec_t* pos, const vec_t* atoms_pos);
+int iter_pot(data_t* data);
+
 /* MAIN */
 
 int main(int argc, char* argv[]) {
 	size_t ITER_COUNT = 50;
+	bool TRUE_POTENTIAL = false;
 	double x_i = 0., y_i = 0., dx_i = 1., dy_i = 1.;
 
 	for (int i = 1; i < argc; ++i) {
@@ -68,12 +75,18 @@ int main(int argc, char* argv[]) {
 
 			i += 4;
 		}
+		else if (strcmp(argv[i], "-pot") == 0) {
+			TRUE_POTENTIAL = true;
+			++i;
+		}
 		else {
 			printf("Unrecognized option '%s'\n", argv[i]);
 		}
 	}
 
 	printf("ITER_COUNT = %llu\n", ITER_COUNT);
+	printf("TRUE_POTENTIAL = %d\n", TRUE_POTENTIAL);
+
 	data_t data = {
 		.iter_idx = 0,
 		.atoms = { {.x = -0.5, .y = 0.5   },
@@ -99,7 +112,11 @@ int main(int argc, char* argv[]) {
 	for (size_t i = 0; i < ITER_COUNT; ++i) {
 		int iter = 0;
 		if (iter(&data) == -1) {
+		if (TRUE_POTENTIAL)
+			iter = iter_pot(&data);
+		else
 			iter = iter_wall(&data);
+
 		if (iter == -1) {
 			free(data.points);
 			free(data.directions);
@@ -303,5 +320,58 @@ int iter_wall(data_t* data) {
 
 	return 0;
 }
+
+double potential(vec_t* pos, const vec_t* atoms_pos) {
+	const double D = 1;
+	const double a = 1.0 / (2.0 * ATOM_RADIUS);
+	const double ATOMS_DIST = 0.1;
+
+	double pot = 0.0;
+
+	for (size_t i = 0; i < 4; ++i) {
+		const double DIST = vec_dist(&atoms_pos[i], pos);
+		pot += (1 - exp(-a * (DIST - ATOMS_DIST))) * (1 - exp(-a * (DIST - ATOMS_DIST)));
+	}
+
+	return D * pot;
+}
+
+double dpot_dx(vec_t* pos, const vec_t* atom_pos) {
+	const double dx = 0.0001;
+	const double pot_x = potential(pos, atom_pos);
+	pos->x += dx;
+	
+	const double dv = (potential(pos, atom_pos) - pot_x) / dx;
+	pos->x -= dx;
+
+	return dv;
+}
+
+double dpot_dy(vec_t* pos, const vec_t* atom_pos) {
+	const double dy = 0.0001;
+	const double pot_y = potential(pos, atom_pos);
+	pos->y += dy;
+
+	const double dv = (potential(pos, atom_pos) - pot_y) / dy;
+	pos->y -= dy;
+
+	return dv;
+}
+
+int iter_pot(data_t* data) {
+	const size_t i = data->iter_idx;
+	const double dt = 0.05;
+
+	const double strength_x = dpot_dx(&data->points[i], data->atoms);
+	const double strength_y = dpot_dy(&data->points[i], data->atoms);
+
+	data->points[i + 1].x = data->points[i].x + data->directions[i].x * dt - 0.5 * strength_x * dt * dt;
+	data->points[i + 1].y = data->points[i].y + data->directions[i].y * dt - 0.5 * strength_y * dt * dt;
+
+	data->directions[i + 1].x = data->directions[i].x - 0.5 * (strength_x + dpot_dx(&data->points[i + 1], data->atoms)) * dt;
+	data->directions[i + 1].y = data->directions[i].y - 0.5 * (strength_y + dpot_dy(&data->points[i + 1], data->atoms)) * dt;
+	
+	++data->iter_idx;
+
 	return 0;
 }
