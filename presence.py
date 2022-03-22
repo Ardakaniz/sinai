@@ -27,7 +27,7 @@ for atom in atoms:
     plt.gca().add_patch(atom)
 
 plt.title("Sinai's billard: number of passage through pixels")
-plt.imshow(presence, cmap='magma',extent=(-0.5,0.5, -0.5,0.5))
+plt.imshow(presence, cmap='magma',extent=(-0.5,0.5, 0.5,-0.5))
 plt.colorbar()
 ax.get_xaxis().set_ticklabels([])
 ax.get_yaxis().set_ticklabels([])
