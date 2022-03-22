@@ -42,6 +42,7 @@ moving_atom = None
 
 plt.title(f"Sinai's billard : trajectories of {len(points[0]) - 1} bounces")
 plt.plot(points[0], points[1], c='b')
-plt.scatter(points[0], points[1], c='b')
+if len(points[0]) < 100:
+    plt.scatter(points[0], points[1], c='b')
 ax.set_aspect('equal')
 plt.show()
