@@ -335,7 +335,7 @@ double potential(vec_t* pos, const vec_t* atoms_pos) {
 }
 
 double dpot_dx(vec_t* pos, const vec_t* atom_pos) {
-	const double dx = 0.0001;
+	const double dx = 0.5 / GRID_SIZE;
 	const double pot_x = potential(pos, atom_pos);
 	pos->x += dx;
 	
@@ -346,7 +346,7 @@ double dpot_dx(vec_t* pos, const vec_t* atom_pos) {
 }
 
 double dpot_dy(vec_t* pos, const vec_t* atom_pos) {
-	const double dy = 0.0001;
+	const double dy = 0.5 / GRID_SIZE;
 	const double pot_y = potential(pos, atom_pos);
 	pos->y += dy;
 
@@ -358,11 +358,19 @@ double dpot_dy(vec_t* pos, const vec_t* atom_pos) {
 
 int iter_pot(data_t* data) {
 	const size_t i = data->iter_idx;
-	const double dt = 0.05;
+
+	const size_t coords = coords2idx(&data->points[i]);
+	data->presence[coords]++;
 
 	// Actually -strength
 	const double strength_x = dpot_dx(&data->points[i], data->atoms);
 	const double strength_y = dpot_dy(&data->points[i], data->atoms);
+
+	// To roughly move from d²x = 1/GRID_SIZE each iteration when in null-potential space
+	const double speed_mag = vec_length(&data->directions[i]);
+	const double strength_mag = sqrt(strength_x * strength_x + strength_y * strength_y);
+
+	const double dt = speed_mag / strength_mag * (sqrt(1 + 2 * strength_mag / (GRID_SIZE * speed_mag * speed_mag)) - 1);
 
 	data->points[i + 1].x = data->points[i].x + data->directions[i].x * dt - 0.5 * strength_x * dt * dt;
 	data->points[i + 1].y = data->points[i].y + data->directions[i].y * dt - 0.5 * strength_y * dt * dt;
