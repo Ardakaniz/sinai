@@ -40,7 +40,7 @@ moving_atom = None
 #    ax.set_aspect('equal')
 #    plt.savefig(f"figs/{i}.png")
 
-plt.title(f"Sinai's billard : trajectories of {len(points[0]) - 1} bounces")
+plt.title(f"Sinai's billard : trajectories with {len(points[0]) - 1} iterations")
 plt.plot(points[0], points[1], c='b')
 if len(points[0]) < 100:
     plt.scatter(points[0], points[1], c='b')
