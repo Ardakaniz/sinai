@@ -334,12 +334,12 @@ int iter_wall(data_t* data) {
 	data->directions[data->iter_idx].y = -(data->directions[data->iter_idx - 1].y - 2.0 * dir_dot_tan * tangent.y);
 	vec_normalize(&data->directions[data->iter_idx]);
 
-	// θ = arccos(OP . (1,0))
+	// θ = arccos(OP . (0,1))
 	vec_normalize(&min_intersec.pos);
 	const vec_t OP = vec_from_points(&VEC_ZERO, &min_intersec.pos);
 	double theta = acos(vec_dot(&OP, &VEC_UNIT_Y));
 
-	if (min_intersec.pos.x > 0) {
+	if (min_intersec.pos.x > 0) { // Because theta is between 0 and pi
 		theta *= -1.;
 	}
 
