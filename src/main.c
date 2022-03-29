@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	printf("ITER_COUNT = %llu\n", ITER_COUNT);
+	printf("ITER_COUNT = %lu\n", ITER_COUNT);
 	printf("TRUE_POTENTIAL = %d\n", TRUE_POTENTIAL);
 
 	data_t data = {
@@ -193,20 +193,20 @@ size_t coords2idx(const vec_t* coords) {
 int init_data(data_t* data, size_t ITER_COUNT) {
 	data->points = malloc((ITER_COUNT + 1) * sizeof(vec_t));
 	if (!data->points) {
-		printf("Failed to allocate %llu bytes\n", (ITER_COUNT + 1) * sizeof(vec_t));
+		printf("Failed to allocate %lu bytes\n", (ITER_COUNT + 1) * sizeof(vec_t));
 		return -1;
 	}
 
 	data->directions = malloc((ITER_COUNT + 1) * sizeof(vec_t));
 	if (!data->directions) {
-		printf("Failed to allocate %llu bytes\n", (ITER_COUNT + 1) * sizeof(vec_t));
+		printf("Failed to allocate %lu bytes\n", (ITER_COUNT + 1) * sizeof(vec_t));
 		free(data->points);
 		return -1;
 	}
 
 	data->presence = malloc(GRID_SIZE * GRID_SIZE * sizeof(unsigned int));
 	if (!data->directions) {
-		printf("Failed to allocate %llu bytes\n", GRID_SIZE * GRID_SIZE * sizeof(unsigned int));
+		printf("Failed to allocate %lu bytes\n", GRID_SIZE * GRID_SIZE * sizeof(unsigned int));
 		free(data->points);
 		free(data->directions);
 		return -1;
@@ -216,7 +216,7 @@ int init_data(data_t* data, size_t ITER_COUNT) {
 
 	data->thetas = malloc(ITER_COUNT * sizeof(double));
 	if (!data->thetas) {
-		printf("Failed to allocate %llu bytes\n", ITER_COUNT * sizeof(double));
+		printf("Failed to allocate %lu bytes\n", ITER_COUNT * sizeof(double));
 
 		free(data->points);
 		free(data->directions);
@@ -226,7 +226,7 @@ int init_data(data_t* data, size_t ITER_COUNT) {
 
 	data->dots = malloc(ITER_COUNT * sizeof(double));
 	if (!data->dots) {
-		printf("Failed to allocate %llu bytes\n", ITER_COUNT * sizeof(double));
+		printf("Failed to allocate %lu bytes\n", ITER_COUNT * sizeof(double));
 
 		free(data->points);
 		free(data->directions);
