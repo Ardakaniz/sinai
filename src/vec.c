@@ -2,7 +2,9 @@
 
 #include <math.h>
 
-static const vec_t VEC_ZERO = { .x = 0, .y = 0 };
+const vec_t VEC_ZERO = { .x = 0, .y = 0 };
+const vec_t VEC_UNIT_X = { .x = 1, .y = 0 };
+const vec_t VEC_UNIT_Y = { .x = 0, .y = 1 };
 
 vec_t vec_from_points(const vec_t* from, const vec_t* to) {
 	const double dx = to->x - from->x;

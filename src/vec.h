@@ -8,7 +8,9 @@ struct vec_t {
 };
 typedef struct vec_t vec_t;
 
-static const vec_t VEC_ZERO;
+extern const vec_t VEC_ZERO;
+extern const vec_t VEC_UNIT_X;
+extern const vec_t VEC_UNIT_Y;
 
 vec_t vec_from_points(const vec_t* from, const vec_t* to);
 double vec_dot(const vec_t* lhs, const vec_t* rhs);

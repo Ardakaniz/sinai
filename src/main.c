@@ -9,7 +9,9 @@
 #define ATOM_RADIUS 0.25 // As a proportion of lattice's size
 #define GRID_SIZE 200
 
-/* STRUCTS */
+/***** STRUCTS *****/
+
+// Structure contenant toutes les données intéressantes de la simulation
 struct data_t {	
 	unsigned int iter_idx;
 
@@ -25,32 +27,49 @@ struct data_t {
 };
 typedef struct data_t data_t;
 
+// Structure utilisé lors du calcul des intersections
 struct intersection_t {
 	vec_t pos, normal;
 	double dist;
 };
 typedef struct intersection_t intersection_t;
 
-/* FUNCTIONS DEF */
+/***** FUNCTIONS DEF *****/
 
+// Mes tableaux possèdent 1 seule dimension pour contenir des données 2D. Cette fonction convertie le couple (x,y) en un index
 size_t coords2idx(const vec_t* coords);
+
+// Fonction qui alloue les différents tableaux nécessaires (points, directions, presence, thetas, dots)
+// * ITER_COUNT = nombre d'itérations choisi en argument
 int init_data(data_t* data, size_t ITER_COUNT);
 
+// Fonction utilitaire à iter_wall qui calcule si il y a intersection entre l'atome mobile et un des 4 atomes fixes
+// * point        = position de l'atome mobile
+// * direction    = direction de l'atome mobile
+// * atom_pos     = position de l'atome fixe
+// * intersection = retourne les données de l'intersection si il y a eu lieu
 int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection_t* intersection);
+// Fonction qui effectue les itérations dans le cas où on considère les collisions élastiques
 int iter_wall(data_t* data);
 
+// ** Fonctions utilitaires pour iter_pot **
+// Retourne le potentiel d'interation entre les 4 atomes fixes et l'atome mobile
 double potential(vec_t* pos, const vec_t* atoms_pos);
+// Dérive le potentiel par rapport à x
 double dpot_dx(vec_t* pos, const vec_t* atoms_pos);
+// Dérive le potentiel par rapport à y
 double dpot_dy(vec_t* pos, const vec_t* atoms_pos);
+// Fonction qui effectue les itérations dans le cas du potentiel réel
 int iter_pot(data_t* data);
 
-/* MAIN */
+/***** MAIN *****/
 
 int main(int argc, char* argv[]) {
 	size_t ITER_COUNT = 50;
 	bool TRUE_POTENTIAL = false;
 	double x_i = 0., y_i = 0., dx_i = 1., dy_i = 1.;
 
+	// Arguments parsing
 	for (int i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-iter") == 0) {
 			if (argc < i + 1) {
@@ -78,6 +97,9 @@ int main(int argc, char* argv[]) {
 		else if (strcmp(argv[i], "-pot") == 0) {
 			TRUE_POTENTIAL = true;
 		}
+		else if (strcmp(argv[i], "-help") == 0) {
+			printf("Usage: ./main [-iter <iteration count>] [-init <initial x> <initial y> <initial dir_x> <initial dir_y>] [-pot] [-help]\n");
+		}
 		else {
 			printf("Unrecognized option '%s'\n", argv[i]);
 		}
@@ -86,6 +108,7 @@ int main(int argc, char* argv[]) {
 	printf("ITER_COUNT = %lu\n", ITER_COUNT);
 	printf("TRUE_POTENTIAL = %d\n", TRUE_POTENTIAL);
 
+	// INitialisation des données, positionnement des atomes dans les 4 coins du carré
 	data_t data = {
 		.iter_idx = 0,
 		.atoms = { {.x = -0.5, .y = 0.5   },
@@ -125,6 +148,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	// Ecriture des différents résultats dans les fichiers de données
 	FILE* file = fopen("presence.dat", "w");
 	if (!file) {
 		fprintf(stderr, "Failed to open 'presence.dat'\n");
@@ -159,7 +183,7 @@ int main(int argc, char* argv[]) {
 
 	file = fopen("phase.dat", "w");
 	if (!file) {
-		fprintf(stderr, "Failed to open 'trajectories.dat'\n");
+		fprintf(stderr, "Failed to open 'phase.dat'\n");
 
 		free(data.points);
 		free(data.directions);
@@ -181,9 +205,10 @@ int main(int argc, char* argv[]) {
 	return EXIT_SUCCESS;
 }
 
-/* FUNCTIONS IMPL */
+/***** FUNCTIONS IMPL *****/
 
 size_t coords2idx(const vec_t* coords) {
+	// Clipping sur les éléments de la grille
 	const size_t x_idx = (size_t)floor(fmax(0.0, fmin(1.0, coords->x + 0.5)) * (GRID_SIZE - 1.0));
 	const size_t y_idx = (size_t)floor(fmax(0.0, fmin(1.0, coords->y + 0.5)) * (GRID_SIZE - 1.0));
 
@@ -239,6 +264,11 @@ int init_data(data_t* data, size_t ITER_COUNT) {
 }
 
 int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection_t* intersection) {
+	// Pour une droite définie par le point A et la direction u
+	// Pour une sphère de centre C et de rayon R
+	// L'intersection est le + petit t positif racine de
+	// t^2  + 2t(u . CA) + CA^2 - R^2
+
 	vec_t dist = vec_from_points(atom_pos, point);
 	const double dot = vec_dot(dir, &dist);
 	const double discr = 4.0 * (dot * dot - vec_length_sq(&dist) + (2.0 * ATOM_RADIUS) * (2.0 * ATOM_RADIUS)); // Twice the atom radius because there are fixed atom + moving one
@@ -256,6 +286,7 @@ int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection
 		intersection->pos.x = intersec.x;
 		intersection->pos.y = intersec.y;
 
+		// On calcule aussi la normale de l'impact pour calculer la réflection
 		intersection->normal = vec_from_points(atom_pos, &intersec);
 		vec_normalize(&intersection->normal);
 		return 1;
@@ -265,6 +296,7 @@ int intersect_atom(vec_t* point, vec_t* dir, const vec_t* atom_pos, intersection
 int iter_wall(data_t* data) {
 	intersection_t min_intersec = { .dist = -1.0 };
 
+	// On recherche l'intersection qui donne la distance la plus petite
 	for (size_t i = 0; i < 4; ++i) {
 		intersection_t intersec;
 		const int intersected = intersect_atom(&data->points[data->iter_idx], &data->directions[data->iter_idx], &data->atoms[i], &intersec);
@@ -273,12 +305,14 @@ int iter_wall(data_t* data) {
 			min_intersec = intersec;
 	}
 
-	if (min_intersec.dist < 0) {
+	if (min_intersec.dist < 0) { // Si aucune, ce n'est pas normal
 		printf("[ERROR] Point (%f,%f) in direction (%f,%f) never intersected!\n", data->points[data->iter_idx].x, data->points[data->iter_idx].y,
 			                                                                      data->directions[data->iter_idx].x, data->directions[data->iter_idx].y);
 		return -1;
 	}
 
+	// Pour remplir le tableau des présences, je parcours le chemin jusqu'à l'intersection "pixel" (au sens de la grille) par pixel
+	// et j'incrémente le nombre de points présents dans cette case
 	vec_t presence_point = data->points[data->iter_idx];
 	while (vec_dist_sq(&data->points[data->iter_idx], &presence_point) < min_intersec.dist * min_intersec.dist) {
 		const size_t coords = coords2idx(&presence_point);
@@ -289,7 +323,7 @@ int iter_wall(data_t* data) {
 	}
 
 	const vec_t tangent = { .x = min_intersec.normal.y, .y = -min_intersec.normal.x };
-	const double dir_dot_tan = vec_dot(&data->directions[data->iter_idx], &tangent);
+	const double dir_dot_tan = vec_dot(&data->directions[data->iter_idx], &tangent); // u . t
 
 	++data->iter_idx;
 
@@ -301,10 +335,9 @@ int iter_wall(data_t* data) {
 	vec_normalize(&data->directions[data->iter_idx]);
 
 	// θ = arccos(OP . (1,0))
-	const vec_t unitary_x = { .x = 0, .y = 1 };
 	vec_normalize(&min_intersec.pos);
 	const vec_t OP = vec_from_points(&VEC_ZERO, &min_intersec.pos);
-	double theta = acos(vec_dot(&OP, &unitary_x));
+	double theta = acos(vec_dot(&OP, &VEC_UNIT_Y));
 
 	if (min_intersec.pos.x > 0) {
 		theta *= -1.;
